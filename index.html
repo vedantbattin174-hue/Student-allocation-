@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f5ee">
+  <title>Student Project Allocation | DML Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
+  <script defer src="data/data.js"></script>
+  <script defer src="algorithm/matching.js"></script>
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#dashboard" aria-label="DML Allocation Lab home">
+      <span class="brand-mark">G<span>↔</span></span>
+      <span><strong>DML / ALLOCATION LAB</strong><small>DISCRETE MATHEMATICS · GRAPH THEORY</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="#dashboard" class="active">Dashboard</a>
+      <a href="#students">Students</a>
+      <a href="#projects">Projects</a>
+      <a href="#graph">Compatibility Graph</a>
+      <a href="#allocation">Allocation</a>
+      <a href="#matrix">Adjacency Matrix</a>
+      <a href="#concepts">DML Concepts</a>
+    </nav>
+    <span class="term-label"><span class="live-dot"></span> INTERACTIVE DEMO</span>
+  </header>
+
+  <main>
+    <section class="intro" id="dashboard">
+      <div class="intro-copy">
+        <p class="eyebrow">A REAL-WORLD MATCHING PROBLEM</p>
+        <h1>Student project<br><em>allocation.</em></h1>
+        <p class="intro-text">Model students and projects as two vertex sets. Connect compatible pairs, then find the largest possible assignment using augmenting paths.</p>
+        <div class="intro-actions">
+          <button class="button button-dark" id="run-allocation"><span class="button-symbol">↗</span> Run project allocation</button>
+          <button class="button button-outline" id="load-demo"><span class="button-symbol">⟳</span> Load demo data</button>
+          <button class="button button-quiet" id="reset-allocation">Reset allocation</button>
+        </div>
+      </div>
+      <div class="intro-diagram" aria-label="Bipartite graph illustration">
+        <div class="diagram-heading"><span>THE MODEL</span><span>G = (S ∪ P, E)</span></div>
+        <div class="diagram-stage">
+          <div class="diagram-column"><span class="diagram-tag">STUDENTS · S</span><i class="node student-node">S₁</i><i class="node student-node">S₂</i><i class="node student-node">S₃</i></div>
+          <svg class="diagram-lines" viewBox="0 0 180 170" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 C70 28 110 28 180 28"/><path d="M0 28 C80 28 100 85 180 85"/><path d="M0 85 C70 85 110 28 180 28"/><path d="M0 85 C70 85 110 142 180 142"/><path d="M0 142 C70 142 110 85 180 85"/></svg>
+          <div class="diagram-column"><span class="diagram-tag">PROJECTS · P</span><i class="node project-node">P₁</i><i class="node project-node">P₂</i><i class="node project-node">P₃</i></div>
+        </div>
+        <div class="diagram-caption"><span class="legend-line"></span> compatibility edge <span class="legend-line legend-match"></span> matched edge</div>
+      </div>
+    </section>
+
+    <section class="stats-grid" aria-label="Allocation dashboard statistics">
+      <article class="stat"><span class="stat-label">TOTAL STUDENTS</span><strong id="stat-students">0</strong><small>vertices in set S</small></article>
+      <article class="stat"><span class="stat-label">TOTAL PROJECTS</span><strong id="stat-projects">0</strong><small>vertices in set P</small></article>
+      <article class="stat"><span class="stat-label">TOTAL CAPACITY</span><strong id="stat-capacity">0</strong><small>available project slots</small></article>
+      <article class="stat stat-accent"><span class="stat-label">ALLOCATED</span><strong id="stat-allocated">0</strong><small>matched students</small></article>
+      <article class="stat"><span class="stat-label">UNALLOCATED</span><strong id="stat-unallocated">0</strong><small>unmatched students</small></article>
+      <article class="stat stat-rate"><span class="stat-label">ALLOCATION RATE</span><strong id="stat-rate">0%</strong><div class="rate-track"><span id="rate-bar"></span></div></article>
+    </section>
+
+    <section class="section-block" id="graph">
+      <div class="section-heading">
+        <div><p class="eyebrow">01 / COMPATIBILITY GRAPH</p><h2>Two sets. Real edges.</h2><p class="section-lede">Students occupy the left partition; projects sit on the right. Every line comes from the compatibility rules below.</p></div>
+        <div class="graph-tools"><label for="compatibility-mode">EDGE SOURCE</label><select id="compatibility-mode"><option value="auto">Automatic · skills + interests</option><option value="manual">Manual · selected pairs only</option><option value="hybrid">Hybrid · automatic + manual</option></select></div>
+      </div>
+      <div class="graph-panel">
+        <div class="graph-key"><span><i class="key-dot key-student"></i> Student vertex</span><span><i class="key-dot key-project"></i> Project vertex</span><span><i class="key-edge"></i> Compatible</span><span><i class="key-edge key-edge-match"></i> In matching</span><span class="graph-count" id="edge-count">0 COMPATIBILITY EDGES</span></div>
+        <div id="cy" role="img" aria-label="Interactive bipartite compatibility graph"></div>
+        <div class="graph-empty" id="graph-empty" hidden>Add at least one student and project to see the graph.</div>
+      </div>
+      <div class="process-strip" aria-label="Allocation process"><span><b>01</b> STUDENTS + PROJECTS</span><i>→</i><span><b>02</b> COMPATIBILITY EDGES</span><i>→</i><span><b>03</b> AUGMENTING PATH DFS</span><i>→</i><span><b>04</b> MAXIMUM MATCHING</span></div>
+    </section>
+
+    <section class="management-grid">
+      <div class="section-block management-panel" id="students">
+        <div class="section-heading compact-heading"><div><p class="eyebrow">SET S / VERTICES</p><h2>Student management</h2></div><span class="count-pill" id="student-count">0 STUDENTS</span></div>
+        <form id="student-form" class="entry-form">
+          <div class="form-row"><label>Student ID<input id="student-id" placeholder="ST11" required></label><label>Name<input id="student-name" placeholder="Student name" required></label></div>
+          <label>Skills <small>comma-separated</small><input id="student-skills" placeholder="Python, AI, Web Development"></label>
+          <label>Interests <small>comma-separated</small><input id="student-interests" placeholder="AI, Data Analytics"></label>
+          <label>Preferences <small>project names, in preference order</small><input id="student-preferences" placeholder="AI Chatbot, Data Analytics"></label>
+          <button class="button button-dark button-small" type="submit">＋ Add student</button><p class="form-message" id="student-message" aria-live="polite"></p>
+        </form>
+        <div class="data-list" id="student-list"></div>
+      </div>
+
+      <div class="section-block management-panel" id="projects">
+        <div class="section-heading compact-heading"><div><p class="eyebrow">SET P / CAPACITY SLOTS</p><h2>Project management</h2></div><span class="count-pill" id="project-count">0 PROJECTS</span></div>
+        <form id="project-form" class="entry-form">
+          <div class="form-row"><label>Project ID<input id="project-id" placeholder="PR07" required></label><label>Project name<input id="project-name" placeholder="Project name" required></label></div>
+          <label>Required skills <small>comma-separated</small><input id="project-skills" placeholder="Python, AI"></label>
+          <label>Capacity<input id="project-capacity" type="number" min="1" step="1" value="2" required></label>
+          <button class="button button-dark button-small" type="submit">＋ Add project</button><p class="form-message" id="project-message" aria-live="polite"></p>
+        </form>
+        <div class="data-list" id="project-list"></div>
+      </div>
+    </section>
+
+    <section class="section-block" id="manual-compatibility">
+      <div class="section-heading"><div><p class="eyebrow">EDGE SET / E</p><h2>Define compatibility</h2><p class="section-lede">Use automatic overlap, choose pairs manually, or combine both. Manual edges are shown as dashed connections in the hybrid view.</p></div><span class="count-pill" id="manual-edge-count">0 MANUAL EDGES</span></div>
+      <div class="table-wrap compatibility-wrap"><table><thead><tr><th>STUDENT</th><th>PROJECT</th><th>SKILL / INTEREST OVERLAP</th><th>MANUAL EDGE</th></tr></thead><tbody id="compatibility-table"></tbody></table></div>
+      <p class="small-note">Automatic compatibility exists when a student's skills or interests overlap a project's required skills. Preferences only order choices; maximum matching does not guarantee globally optimal preference satisfaction.</p>
+    </section>
+
+    <section class="section-block" id="allocation">
+      <div class="section-heading"><div><p class="eyebrow">02 / MATCHING RESULT</p><h2>Allocation outcome</h2><p class="section-lede">Each student is assigned to at most one project. Capacity is enforced through internal project slots, hidden from the result table.</p></div><div class="result-total"><strong id="matching-total">0</strong><span>TOTAL MATCHING</span></div></div>
+      <div class="result-grid">
+        <div class="result-table-panel"><div class="subheading"><h3>Final allocation</h3><button class="button button-outline button-small" id="export-csv" disabled>↓ Export CSV</button></div>
+          <div class="table-wrap"><table><thead><tr><th>STUDENT ID</th><th>STUDENT NAME</th><th>ALLOCATED PROJECT</th><th>PREFERENCE</th><th>STATUS</th></tr></thead><tbody id="allocation-table"><tr><td colspan="5" class="empty-cell">Run the matching algorithm to generate results.</td></tr></tbody></table></div>
+        </div>
+        <aside class="unallocated-panel"><div class="subheading"><h3>Unallocated students</h3><span class="count-pill" id="unallocated-count">0</span></div><div id="unallocated-list" class="unallocated-list"><p class="empty-cell">No allocation has been run yet.</p></div></aside>
+      </div>
+      <div class="result-grid lower-results">
+        <div class="result-table-panel"><div class="subheading"><h3>Matched edges</h3><span class="micro-label">SELECTED EDGE SET M</span></div><div id="matched-edges" class="edge-results"><p class="empty-cell">Matching edges will appear here.</p></div></div>
+        <div class="result-table-panel augment-panel"><div class="subheading"><h3>Augmenting path demonstration</h3><span class="micro-label">DFS TRACE</span></div><div id="augmenting-demo"><p class="empty-cell">Run allocation to inspect successful reassignment paths.</p></div></div>
+      </div>
+    </section>
+
+    <section class="section-block" id="matrix">
+      <div class="section-heading"><div><p class="eyebrow">03 / GRAPH REPRESENTATIONS</p><h2>Adjacency matrix</h2><p class="section-lede">Rows are students and columns are projects. A 1 means a compatibility edge exists; capacity does not change the binary graph.</p></div><span class="matrix-key"><b>1</b> EDGE &nbsp;&nbsp; <b>0</b> NO EDGE</span></div>
+      <div class="table-wrap matrix-wrap" id="matrix-container"><p class="empty-cell">Add students and projects to generate the adjacency matrix.</p></div>
+    </section>
+
+    <section class="section-block adjacency-section" id="adjacency-list">
+      <div class="section-heading"><div><p class="eyebrow">04 / GRAPH REPRESENTATIONS</p><h2>Adjacency list</h2><p class="section-lede">For each student vertex, list every neighboring project vertex in the compatibility graph.</p></div></div>
+      <div id="adjacency-list-content" class="adjacency-list-content"></div>
+    </section>
+
+    <section class="section-block concepts-section" id="concepts">
+      <div class="section-heading"><div><p class="eyebrow">05 / DISCRETE MATHEMATICS</p><h2>DML concepts used</h2><p class="section-lede">The allocation interface is a concrete model of graph representation and matching.</p></div><span class="course-stamp">CSE · DML PROJECT</span></div>
+      <div class="concept-grid">
+        <article class="concept"><span class="concept-number">01</span><h3>Graph</h3><p>A graph is a structure made of vertices and edges. Here, students and projects are vertices connected by compatibility edges.</p></article>
+        <article class="concept"><span class="concept-number">02</span><h3>Bipartite graph</h3><p>A graph whose vertices split into two disjoint sets, with every edge joining one set to the other. No student connects directly to another student.</p></article>
+        <article class="concept"><span class="concept-number">03</span><h3>Vertex</h3><p>A node in a graph. Each student and each project is represented by a vertex in its own partition.</p></article>
+        <article class="concept"><span class="concept-number">04</span><h3>Edge</h3><p>An edge joins a student to a project when their skills or interests match, or when the pair is manually marked compatible.</p></article>
+        <article class="concept"><span class="concept-number">05</span><h3>Matching</h3><p>A selected set of edges where no student is used more than once. Project slots also ensure each project's capacity is respected.</p></article>
+        <article class="concept"><span class="concept-number">06</span><h3>Maximum matching</h3><p>A matching with the greatest possible number of allocated students for the current graph and project capacities.</p></article>
+        <article class="concept"><span class="concept-number">07</span><h3>Augmenting path</h3><p>An alternating path that starts at an unmatched student and ends at an available slot. Flipping its edges increases matching size by one.</p></article>
+        <article class="concept"><span class="concept-number">08</span><h3>Adjacency matrix</h3><p>A 0/1 table encoding which student-project edges exist. A 1 indicates compatibility, and a 0 indicates no edge.</p></article>
+        <article class="concept"><span class="concept-number">09</span><h3>Adjacency list</h3><p>A compact representation that records the neighboring project vertices for each student.</p></article>
+        <article class="concept"><span class="concept-number">10</span><h3>Project capacity</h3><p>The maximum number of students a project can accept. Internally, the algorithm models this as that many equivalent project slots.</p></article>
+      </div>
+    </section>
+  </main>
+  <footer><span>DML / ALLOCATION LAB</span><span>MAXIMUM BIPARTITE MATCHING · KUHN DFS</span><a href="#dashboard">BACK TO TOP ↑</a></footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
